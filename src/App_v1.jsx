@@ -1,52 +1,5 @@
 import { useEffect, useState } from "react";
 
-const tempMovieData = [
-  {
-    imdbID: "tt1375666",
-    Title: "Inception",
-    Year: "2010",
-    Poster:
-      "https://m.media-amazon.com/images/M/MV5BMjAxMzY3NjcxNF5BMl5BanBnXkFtZTcwNTI5OTM0Mw@@._V1_SX300.jpg",
-  },
-  {
-    imdbID: "tt0133093",
-    Title: "The Matrix",
-    Year: "1999",
-    Poster:
-      "https://m.media-amazon.com/images/M/MV5BNzQzOTk3OTAtNDQ0Zi00ZTVkLWI0MTEtMDllZjNkYzNjNTc4L2ltYWdlXkEyXkFqcGdeQXVyNjU0OTQ0OTY@._V1_SX300.jpg",
-  },
-  {
-    imdbID: "tt6751668",
-    Title: "Parasite",
-    Year: "2019",
-    Poster:
-      "https://m.media-amazon.com/images/M/MV5BYWZjMjk3ZTItODQ2ZC00NTY5LWE0ZDYtZTI3MjcwN2Q5NTVkXkEyXkFqcGdeQXVyODk4OTc3MTY@._V1_SX300.jpg",
-  },
-];
-
-const tempWatchedData = [
-  {
-    imdbID: "tt1375666",
-    Title: "Inception",
-    Year: "2010",
-    Poster:
-      "https://m.media-amazon.com/images/M/MV5BMjAxMzY3NjcxNF5BMl5BanBnXkFtZTcwNTI5OTM0Mw@@._V1_SX300.jpg",
-    runtime: 148,
-    imdbRating: 8.8,
-    userRating: 10,
-  },
-  {
-    imdbID: "tt0088763",
-    Title: "Back to the Future",
-    Year: "1985",
-    Poster:
-      "https://m.media-amazon.com/images/M/MV5BZmU0M2Y1OGUtZjIxNi00ZjBkLTg1MjgtOWIyNThiZWIwYjRiXkEyXkFqcGdeQXVyMTQxNzMzNDI@._V1_SX300.jpg",
-    runtime: 116,
-    imdbRating: 8.5,
-    userRating: 9,
-  },
-];
-
 const average = (arr) =>
   arr.reduce((acc, cur, i, arr) => acc + cur / arr.length, 0);
 
@@ -67,38 +20,73 @@ export default function App() {
   function handleAddWatched(movie) {
     setWatched((watched) => [...watched, movie]);
   }
-
-  //  // // // // API  Github Account  \\ \\ \\ \\ \\
-  const url = "https://freetestapi.com/api/v1/movies?limit=15";
+  function handleDeleteWatched(id) {
+    setWatched((watched) => watched.filter((movie) => movie.imdbID !== id));
+  }
+// handle press Arrow Left
   useEffect(function () {
-    async function fetchMovies() {
-      try {
-        setIsLoding(true);
-        setError("");
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error("Something went  wrong with fetch movies");
-        }
-        const result = await response.json();
-        setMovies(result);
-        console.log(result);
-      } catch (error) {
-        setError(error.message);
-      } finally {
-        setIsLoding(false);
+    const handleKeyPress = (event) => {
+      if (event.key === "ArrowLeft") {
+        handleCloseMovie();
       }
-    }
-    if (!query.length) {
-      setMovies([]);
-      setError("");
-      return;
-    }
-
-    fetchMovies();
+    };
+    window.addEventListener("keydown", handleKeyPress);
+    return () => {
+      window.removeEventListener("keydown", handleKeyPress);
+    };
   }, []);
 
+  const url =
+    "https://api.themoviedb.org/3/discover/movie?include_adult=false&include_video=false&language=en-US&page=1&sort_by=popularity.desc";
+  const options = {
+    method: "GET",
+    headers: {
+      accept: "application/json",
+      Authorization:
+        "Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI1NTRkMjZkOTNmMzAyOTQzYTk0OTJjOTMyZTk5ZjdmNiIsIm5iZiI6MTcyOTE5MzAzNy4yNzg0MTcsInN1YiI6IjY2ZmEzMzdmMWE5YzkxODhmZWNjODFhOCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.fz5LKACwwQytcOibslag8RnOxxPes7KQM1FCg8gflQU",
+    },
+  };
+  useEffect(
+    function () {
+      const controller = new AbortController();
+      async function fetchMovies() {
+        try {
+          setIsLoding(true);
+          setError("");
+          const response = await fetch(url, options, {
+            signal: controller.signal,
+          });
+          if (!response.ok) {
+            throw new Error("Something went  wrong with fetch movies");
+          }
+          const result = await response.json();
+          setMovies(result.results);
+          console.log(result.results);
+        } catch (error) {
+          setError(error.message);
+          if (error.name !== "AbortError") {
+            setError(error.message);
+          }
+        } finally {
+          setIsLoding(false);
+        }
+      }
+      if (!query.length) {
+        setMovies([]);
+        setError("");
+        return;
+      }
+      fetchMovies();
+      return function () {
+        controller.abort();
+      };
+    },
+
+    [query]
+  );
+
   // ***************************************************
-  // github API
+  //  // // // // API  Github Account  \\ \\ \\ \\ \\
 
   // useEffect(
   //   function () {
@@ -161,6 +149,7 @@ export default function App() {
           selectedID={selectedID}
           handleCloseMovie={handleCloseMovie}
           handleAddWatched={handleAddWatched}
+          handleDeleteWatched={handleDeleteWatched}
         />
       </Main>
     </div>
@@ -255,6 +244,7 @@ function WatchedBox({
   selectedID,
   handleCloseMovie,
   handleAddWatched,
+  handleDeleteWatched,
 }) {
   const [isOpen2, setIsOpen2] = useState(true);
 
@@ -280,22 +270,29 @@ function WatchedBox({
             selectedID={selectedID}
             onCloseMovie={handleCloseMovie}
             onAddWatched={handleAddWatched}
+            watched={watched}
           />
         ) : (
           <>
             <WatchedSummary watched={watched} darkMode={darkMode} />
-            <WatchMovisList watched={watched} />
+            <WatchMovisList
+              watched={watched}
+              handleDeleteWatched={handleDeleteWatched}
+            />
           </>
         ))}
     </div>
   );
 
-  function WatchMovisList({ watched }) {
+  function WatchMovisList({ watched, handleDeleteWatched }) {
     return (
       <ul className="list">
         {watched.map((movie) => (
           <li key={movie.imdbID}>
-            <img src={movie.poster} alt={`${movie.title} poster`} />
+            <img
+              src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
+              alt={`${movie.title} poster`}
+            />
             <h3>{movie.title}</h3>
             <div>
               <p>
@@ -310,6 +307,13 @@ function WatchedBox({
                 <span>⏳</span>
                 <span>{movie.runtime} min</span>
               </p>
+              <button
+                className="btn-delete"
+                onClick={() => handleDeleteWatched(movie.imdbID)}
+              >
+                {" "}
+                X
+              </button>
             </div>
           </li>
         ))}
@@ -335,15 +339,19 @@ function WatchedSummary({ watched, darkMode }) {
         </p>
         <p>
           <span>⭐️</span>
-          <span>{avgImdbRating}</span>
+          <span>{avgImdbRating.toFixed(2)}</span>
         </p>
         <p>
           <span>🌟</span>
-          <span>{avgUserRating}</span>
+          <span>
+            {avgUserRating.toFixed(2) <= 0 ? 0 : avgUserRating.toFixed(2)}
+          </span>
         </p>
         <p>
           <span>⏳</span>
-          <span>{avgRuntime} min</span>
+          <span>
+            {avgRuntime.toFixed(2) <= 0 ? 0 : avgRuntime.toFixed(2)} min
+          </span>
         </p>
       </div>
     </div>
@@ -367,12 +375,15 @@ function MovieList({ movies, darkMode, selectElement }) {
 function Movie({ movie, darkMode, selectElement }) {
   return (
     <li onClick={() => selectElement(movie.id)}>
-      <img src={movie.poster} alt={`${movie.title}poster`} />
+      <img
+        src={`https://image.tmdb.org/t/p/original${movie.poster_path}`}
+        alt={`${movie.title}poster`}
+      />
       <h3>{movie.title}</h3>
       <div>
         <p>
           <span>🗓</span>
-          <span>{movie.year}</span>
+          <span>{movie.release_date}</span>
         </p>
       </div>
     </li>
@@ -410,20 +421,26 @@ function Search({ darkMode, query, setQuery }) {
     />
   );
 }
-function MovieDetalis({ onCloseMovie, selectedID, onAddWatched }) {
+function MovieDetalis({ onCloseMovie, selectedID, onAddWatched, watched }) {
   const [movie, setMovie] = useState({});
   const [isLoding, setIsLoding] = useState(false);
   const [userRating, setUeserRating] = useState("");
+
+  const isWatched = watched.some((movie) => movie.imdbID === selectedID);
+  const WatchedUserRating = watched.find(
+    (movie) => movie.imdbID === selectedID
+  )?.userRating;
+
   const {
     title: title,
-    year: year,
-    poster: poster,
+    release_date: year,
+    backdrop_path: backdrop_path,
     plot: plot,
-    country: country,
-    rating: rating,
-    awards: awards,
-    actors: actors,
-    director: director,
+    origin_country: country,
+    vote_average: rating,
+    status: awards,
+    overview: actors,
+    overview: director,
     imdbRating,
     runtime,
   } = movie;
@@ -432,9 +449,9 @@ function MovieDetalis({ onCloseMovie, selectedID, onAddWatched }) {
       imdbID: selectedID,
       title,
       year,
-      poster,
-      imdbRating: Number(rating),
-      runtime: Number(runtime),
+      backdrop_path,
+      imdbRating: Number(rating).toFixed(2),
+      runtime: Number(runtime).toFixed(2),
       userRating,
     };
     onAddWatched(newWatchedMovie);
@@ -444,16 +461,33 @@ function MovieDetalis({ onCloseMovie, selectedID, onAddWatched }) {
     function () {
       async function getMovieDetailes() {
         setIsLoding(true);
-        const url = `https://freetestapi.com/api/v1/movies/${selectedID}`;
-        const request = await fetch(url);
+        const url = `https://api.themoviedb.org/3/movie/${selectedID}?language=en-US`;
+        const options = {
+          method: "GET",
+          headers: {
+            accept: "application/json",
+            Authorization:
+              "Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI1NTRkMjZkOTNmMzAyOTQzYTk0OTJjOTMyZTk5ZjdmNiIsIm5iZiI6MTcyOTE5MzAzNy4yNzg0MTcsInN1YiI6IjY2ZmEzMzdmMWE5YzkxODhmZWNjODFhOCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.fz5LKACwwQytcOibslag8RnOxxPes7KQM1FCg8gflQU",
+          },
+        };
+        const request = await fetch(url, options);
         const result = await request.json();
         setMovie(result);
         setIsLoding(false);
+        // console.log(result);
       }
       getMovieDetailes();
     },
     [selectedID]
   );
+
+  useEffect(() => {
+    if (!title) return;
+    document.title = `Title|${title}`;
+    return function () {
+      document.title = "userPopcorn";
+    };
+  }, [title]);
 
   return (
     <div className="details">
@@ -461,7 +495,10 @@ function MovieDetalis({ onCloseMovie, selectedID, onAddWatched }) {
         <button className="btn-back" onClick={onCloseMovie}>
           <i className="fa-solid fa-arrow-left"></i>
         </button>
-        <img src={poster} alt={`poster of ${title} movie`} />
+        <img
+          src={`https://image.tmdb.org/t/p/original${backdrop_path}`}
+          alt={`poster of ${title} movie`}
+        />
         <div className="details-overview">
           <h2>{title}</h2>
           <p>
@@ -476,18 +513,28 @@ function MovieDetalis({ onCloseMovie, selectedID, onAddWatched }) {
       </header>
       <section>
         <div className="rating">
-          <StarRating
-            maxRating={10}
-            className={""}
-            size={28}
-            onSetRating={setUeserRating}
-          />
-          {userRating > 0 && (
-            <button className="btn-add" onClick={handleAdd}>
-              + Add to list
-            </button>
+          {isWatched ? (
+            <p>
+              {" "}
+              You rated with movie {WatchedUserRating} <span>⭐</span>
+            </p>
+          ) : (
+            <>
+              <StarRating
+                maxRating={10}
+                className={""}
+                size={28}
+                onSetRating={setUeserRating}
+              />
+              {userRating > 0 && (
+                <button className="btn-add" onClick={handleAdd}>
+                  + Add to list
+                </button>
+              )}
+            </>
           )}
         </div>
+
         <p>
           <em>{plot}</em>
         </p>
@@ -527,9 +574,9 @@ function StarRating({
     onMovieRating
       ? setRating(rating) || onMovieRating(rating)
       : setRating(rating);
-      if (onSetRating) {
-        onSetRating(rating); // Call the function to set userRating in the parent component
-      }
+    if (onSetRating) {
+      onSetRating(rating);
+    }
   }
 
   const textStyle = {
